@@ -30,15 +30,22 @@ L'objectif était de réaliser une application web de gestion des ressources hum
 ### Installation en Une Commande
 
 ```bash
-# Cloner le projet
-git clone <repository-url>
-cd QUANTECH
+# Cloner le projet avec les submodules
+git clone --recurse-submodules git@github.com:AlMoustapha01/quantech-wehr.git
+cd quantech-wehr
+
+# OU si vous avez déjà cloné sans --recurse-submodules
+git clone git@github.com:AlMoustapha01/quantech-wehr.git
+cd quantech-wehr
+git submodule update --init --recursive
 
 # Démarrer tous les services
 docker compose up -d
 ```
 
 **C'est tout !** L'application se configure automatiquement sans aucune configuration manuelle additionnelle.
+
+> **Note** : Ce projet utilise des **git submodules** pour gérer le frontend (`we-hr`) et le backend (`we-hr-api`) comme des dépôts séparés. Assurez-vous d'utiliser `--recurse-submodules` lors du clone ou d'exécuter `git submodule update --init --recursive` après le clone.
 
 ### Accès à l'Application
 
