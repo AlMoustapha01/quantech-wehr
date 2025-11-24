@@ -1,0 +1,6 @@
+[submodule "we-hr"]
+	path = we-hr
+	url = git@github.com:AlMoustapha01/we-hr-frontend.git
+[submodule "we-hr-api"]
+	path = we-hr-api
+	url = git@github.com:AlMoustapha01/we-hr-backend.git

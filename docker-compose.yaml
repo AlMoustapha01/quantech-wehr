@@ -1,0 +1,95 @@
+services:
+  # Traefik reverse proxy
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    command:
+      - --api.dashboard=true
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+    ports:
+      - "80:80"
+      - "8080:8080" # Dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - wehr-network
+
+  # Database
+  wehr_database:
+    container_name: wehr_database_0000
+    image: postgres:16-alpine
+    shm_size: 128mb
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - wehr-network
+    labels:
+      - "traefik.enable=false"
+
+  # Backend (Production)
+  wehr_backend:
+    container_name: wehr_backend
+    build:
+      context: ./we-hr-api
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - DATABASE_HOST=wehr_database
+      - DATABASE_PORT=5432
+      - DATABASE_USER=${POSTGRES_USER}
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
+      - DATABASE_NAME=${POSTGRES_DB}
+    depends_on:
+      wehr_database:
+        condition: service_healthy
+    networks:
+      - wehr-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wehr_backend.rule=Host(`api.wehr.localhost`)"
+      - "traefik.http.routers.wehr_backend.entrypoints=web"
+      - "traefik.http.services.wehr_backend.loadbalancer.server.port=3000"
+
+  # Frontend (Production)
+  wehr_frontend:
+    container_name: wehr_frontend
+    build:
+      context: ./we-hr
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://api.wehr.localhost
+      - NEXT_PUBLIC_APP_URL=http://wehr.localhost
+    depends_on:
+      - wehr_backend
+    networks:
+      - wehr-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wehr_frontend.rule=Host(`wehr.localhost`)"
+      - "traefik.http.routers.wehr_frontend.entrypoints=web"
+      - "traefik.http.services.wehr_frontend.loadbalancer.server.port=3000"
+
+volumes:
+  pgdata:
+
+networks:
+  wehr-network:
+    driver: bridge
